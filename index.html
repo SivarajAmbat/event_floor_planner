@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Basecamp Event Floor Planner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 3 2 20h20L12 3Zm0 6 5.5 9h-11L12 9Z" fill="currentColor"/></svg>
+    <div>
+      <h1>Basecamp Event Floor Planner</h1>
+      <p>Hackathon space planning</p>
+    </div>
+  </div>
+  <div class="header-note" id="saveNote">Layout autosaves in this browser</div>
+</header>
+
+<!-- ========== Summary dashboard ========== -->
+<section class="dashboard" id="dashboard" aria-label="Summary">
+  <div class="card stat">
+    <h3>Room</h3>
+    <div class="big" id="dRoom">—</div>
+    <div class="sub" id="dArea">—</div>
+  </div>
+  <div class="card stat">
+    <h3>Target</h3>
+    <div class="big" id="dTarget">—</div>
+    <div class="sub">participants</div>
+  </div>
+  <div class="card stat">
+    <h3>Current layout</h3>
+    <div class="kv"><span>Tables</span><b id="dTables">0</b></div>
+    <div class="kv"><span>Chairs</span><b id="dChairs">0</b></div>
+    <div class="kv"><span>Participants</span><b id="dPeople">0</b></div>
+  </div>
+  <div class="card stat status empty" id="statusCard" role="status" aria-live="polite"></div>
+  <div class="card stat extra">
+    <div class="kv"><span>Unused area</span><b id="dUnused">—</b></div>
+    <div class="kv"><span>Walking clearance</span><b id="dAisle">—</b></div>
+    <div class="kv"><span>Wall clearance</span><b id="dWall">—</b></div>
+    <div class="kv"><span>Smallest aisle</span><b id="dMinGap">—</b></div>
+  </div>
+</section>
+
+<main class="workspace">
+  <!-- ========== Controls ========== -->
+  <aside class="sidebar" aria-label="Planner controls">
+
+    <section class="card panel">
+      <h2>Room Dimensions</h2>
+      <div class="row2">
+        <label>Length (ft)
+          <input type="number" id="inLength" min="10" max="500" step="0.5" inputmode="decimal">
+        </label>
+        <label>Width (ft)
+          <input type="number" id="inWidth" min="10" max="500" step="0.5" inputmode="decimal">
+        </label>
+      </div>
+      <div class="readout">Room Area: <b id="roomArea">—</b></div>
+      <p class="hint">Length is drawn horizontally, width vertically.</p>
+    </section>
+
+    <section class="card panel">
+      <h2>Target Participants</h2>
+      <label>Target Participants
+        <input type="number" id="inTarget" min="1" max="5000" step="1" inputmode="numeric">
+      </label>
+      <div class="projection" id="projection"></div>
+    </section>
+
+    <section class="card panel">
+      <h2>Table Type</h2>
+      <div class="radios" id="typeRadios" role="radiogroup" aria-label="Table type">
+        <label class="radio"><input type="radio" name="ttype" value="r5"><span>5 ft Round</span></label>
+        <label class="radio"><input type="radio" name="ttype" value="r6"><span>6 ft Round</span></label>
+        <label class="radio"><input type="radio" name="ttype" value="b6"><span>6 ft Rectangle</span></label>
+        <label class="radio"><input type="radio" name="ttype" value="b8"><span>8 ft Rectangle</span></label>
+      </div>
+      <div class="dim" id="typeDim"></div>
+      <label>Chairs per table
+        <select id="selChairs"></select>
+      </label>
+    </section>
+
+    <section class="card panel">
+      <h2>Clearance</h2>
+      <div class="row2">
+        <label>Walking Clearance (ft)
+          <input type="number" id="inAisle" min="0" max="20" step="0.5" inputmode="decimal">
+        </label>
+        <label>Wall Clearance (ft)
+          <input type="number" id="inWall" min="0" max="20" step="0.5" inputmode="decimal">
+        </label>
+      </div>
+    </section>
+
+    <section class="card panel">
+      <h2>Layout</h2>
+      <button class="btn primary block" id="btnAuto500">Auto-Arrange for 500 People</button>
+      <button class="btn block" id="btnAutoArrange">Auto Arrange</button>
+      <div class="add-box">
+        <div class="dim" id="addSummary"></div>
+        <button class="btn block" id="btnAdd">+ Add Table</button>
+      </div>
+      <button class="btn block" id="btnCompare">Compare Table Options</button>
+    </section>
+
+    <section class="card panel">
+      <h2>File</h2>
+      <div class="row2">
+        <button class="btn block" id="btnExport">Export Layout</button>
+        <button class="btn block" id="btnPrint">Print</button>
+      </div>
+      <button class="btn danger block" id="btnClear">Clear Layout</button>
+      <button class="btn danger-outline block" id="btnResetSaved">Reset Saved Layout</button>
+    </section>
+
+    <details class="card panel assumptions">
+      <summary>Planning assumptions</summary>
+      <p>This tool is intended for preliminary event-space planning. Capacity estimates are based on geometric table, chair and clearance assumptions and should be validated against the venue's actual architectural floor plan, fire/life-safety requirements, accessibility requirements and venue rules.</p>
+      <ul>
+        <li>1 chair = 1 participant.</li>
+        <li>Chairs are modelled as 1.4 × 1.4 ft, set 0.1 ft from the table edge.</li>
+        <li>Each table plus its chairs forms a group; groups must stay at least the walking clearance apart and the wall clearance from the walls.</li>
+        <li>"Very tight" means a smallest aisle under 3 ft, or groups plus aisles filling 90%+ of the usable floor.</li>
+      </ul>
+    </details>
+  </aside>
+
+  <!-- ========== Floor plan ========== -->
+  <section class="plan-panel card" aria-label="Floor plan">
+    <div class="plan-toolbar">
+      <div class="zoom">
+        <button class="icon-btn" id="btnZoomIn" title="Zoom in" aria-label="Zoom in">+</button>
+        <button class="icon-btn" id="btnZoomOut" title="Zoom out" aria-label="Zoom out">−</button>
+        <button class="btn small" id="btnFit" title="Fit room to screen">Fit</button>
+        <button class="btn small" id="btnReset" title="Reset to 10 px per foot">Reset view</button>
+      </div>
+      <div class="toggles">
+        <label class="check"><input type="checkbox" id="chkZones" checked> Aisles &amp; clearance</label>
+        <label class="check"><input type="checkbox" id="chkLabels" checked> Labels</label>
+      </div>
+    </div>
+
+    <div class="sel-panel" id="selPanel">
+      <div class="sel-empty" id="selEmpty">Click a table to select it, change its chairs, rotate or delete it. Drag to move.</div>
+      <div class="sel-fields" id="selFields" hidden>
+        <h3>Selected Table <span class="tid" id="selId"></span></h3>
+        <div class="kv"><span>Type</span><b id="selType"></b></div>
+        <div class="kv"><span>Dimensions</span><b id="selDim"></b></div>
+        <label>Chairs
+          <select id="selTableChairs"></select>
+        </label>
+        <div class="kv"><span>Participants</span><b id="selPeople"></b></div>
+        <button class="btn small" id="btnRotate">Rotate 90°</button>
+        <button class="btn small danger" id="btnDelete">Delete</button>
+        <div class="sel-msg" id="selMsg"></div>
+      </div>
+    </div>
+
+    <div class="plan-wrap" id="planWrap">
+      <svg id="plan" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Scaled floor plan"></svg>
+
+      <div class="empty-hint" id="emptyHint">
+        <p>The room is empty.</p>
+        <button class="btn primary" id="btnAuto500b">Auto-Arrange for 500 People</button>
+      </div>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <div class="legend">
+      <span><i class="sw table"></i>Table</span>
+      <span><i class="sw chair"></i>Chair</span>
+      <span><i class="sw aisle"></i>Walking aisle</span>
+      <span><i class="sw wall"></i>Wall clearance</span>
+      <span><i class="sw warn"></i>Clearance violated</span>
+      <span><i class="sw bad"></i>Overlap / outside room</span>
+      <span class="legend-tip">Drag tables to move · click empty space to deselect · scroll to zoom</span>
+    </div>
+  </section>
+</main>
+
+<p class="print-assumptions">Preliminary planning estimate only — validate against the venue's architectural floor plan, fire/life-safety, accessibility requirements and venue rules.</p>
+
+<dialog id="confirmDlg">
+  <form method="dialog">
+    <p id="cfMsg"></p>
+    <div class="dlg-actions">
+      <button class="btn" value="cancel">Cancel</button>
+      <button class="btn danger" value="ok" id="cfOk">OK</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="compareDlg">
+  <form method="dialog">
+    <h2>Table Options Comparison</h2>
+    <p class="hint" id="cmpIntro"></p>
+    <div class="table-scroll">
+      <table class="cmp" id="cmpTable"></table>
+    </div>
+    <div class="dlg-actions">
+      <button class="btn primary" value="close">Close</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="script.js"></script>
+</body>
+</html>
